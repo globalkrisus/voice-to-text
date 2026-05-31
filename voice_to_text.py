@@ -13,6 +13,26 @@ SAMPLE_RATE = 16000
 SILENCE_THRESHOLD = 15
 GEOMETRY_FILE = os.path.expanduser("~/.config/voice-geometry")
 
+CUSTOM_WORDS = {
+    "przecinek": ",",
+    "kropka": ".",
+}
+
+def fix_custom_words(text):
+    for wrong, correct in CUSTOM_WORDS.items():
+        text = text.replace(wrong, correct)
+    return text
+
+def format_punctuation(text):
+    text = text.replace(" .", ".").replace(" ,", ",")
+    parts = text.split(". ")
+    if len(parts) > 1:
+        parts = [parts[0]] + [p.capitalize() for p in parts[1:]]
+        text = ". ".join(parts)
+    if text:
+        text = text[0].upper() + text[1:]
+    return text
+
 def save_geometry():
     try:
         result = subprocess.run(
@@ -71,6 +91,7 @@ def main():
                     paused = not paused
                     if paused:
                         if accumulated_text:
+                            accumulated_text = format_punctuation(accumulated_text)
                             subprocess.run(['xclip', '-selection', 'clipboard'], input=accumulated_text.encode(), check=True)
                             print(f"\n⏸  ZATRZYMANY - skopiowano: {accumulated_text}")
                             accumulated_text = ""
@@ -87,7 +108,7 @@ def main():
 
                 if recognizer.AcceptWaveform(data):
                     result = json.loads(recognizer.Result())
-                    text = result.get("text", "").strip()
+                    text = fix_custom_words(result.get("text", "").strip())
                     if text:
                         if accumulated_text:
                             accumulated_text += " " + text
